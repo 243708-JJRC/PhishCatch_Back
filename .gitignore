@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Entorno y Secretos
+.env
+.env.local
+*.pem
+*.key
+
+# Base de datos local
+postgres_data/
+
+# Testing y Cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
