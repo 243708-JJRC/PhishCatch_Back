@@ -10,26 +10,19 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
-    # Base de Datos PostgreSQL
-    DATABASE_URL: str = "postgresql://phishcatch_user:phishcatch_password@localhost:5432/phishcatch_db"
+    DATABASE_URL: str
 
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    POSTGRES_USER: str = "phishcatch_user"
-    POSTGRES_PASSWORD: str = "phishcatch_password"
-    POSTGRES_DB: str = "phishcatch_db"
+    POSTGRES_SERVER: str
+    POSTGRES_PORT: int
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
 
-    # JWT y Seguridad
-    SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_SUPER_SAFE"
+    SECRET_KEY: str 
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost",
-        "http://localhost:3000",
-        "http://localhost:8000",
-    ]
+    BACKEND_CORS_ORIGINS: List[str] = []
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -40,8 +33,7 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    # OSINT & Threat Intel Keys
-    VIRUSTOTAL_API_KEY: str = ""
+    VIRUSTOTAL_API_KEY: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
