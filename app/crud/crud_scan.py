@@ -34,22 +34,6 @@ def get_user_scans(
     skip: int = 0,
     limit: int = 20,
 ) -> List[ScanHistory]:
-
-    return (
-        db.query(ScanHistory)
-        .filter(ScanHistory.user_id == user_id)
-        .order_by(ScanHistory.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-def get_user_scans(
-    db: Session,
-    user_id: int,
-    skip: int = 0,
-    limit: int = 20,
-) -> List[ScanHistory]:
     return (
         db.query(ScanHistory)
         .filter(ScanHistory.user_id == user_id)

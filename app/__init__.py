@@ -1,1 +1,0 @@
-"""PhishCatch Application Package."""

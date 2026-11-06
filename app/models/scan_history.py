@@ -27,6 +27,7 @@ class RiskLevel(str, enum.Enum):
     SUSPICIOUS = "suspicious"
     MALICIOUS = "malicious"
     PENDING = "pending"
+    ERROR = "error"
 
 
 class ScanHistory(Base):

@@ -12,13 +12,13 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
 
-    POSTGRES_SERVER: str
-    POSTGRES_PORT: int
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = ""
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_DB: str = ""
 
-    SECRET_KEY: str 
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
@@ -33,13 +33,14 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    VIRUSTOTAL_API_KEY: str
+    VIRUSTOTAL_API_KEY: str = ""
+    PHISHTANK_API_KEY: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
 

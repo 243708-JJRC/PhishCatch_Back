@@ -9,19 +9,67 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.scan import ScanResponse, URLScanRequest
 from app.services.email_parser import parse_eml
+from app.services.phishtank import check_phishtank
 from app.services.virustotal import virustotal_service
 
 router = APIRouter()
 
-# Límite de tamaño máximo para archivos .eml
 MAX_EML_SIZE_BYTES = 10 * 1024 * 1024
+
+
+def calculate_consensus_risk(vt_risk: str, pt_risk: str) -> str:
+    if vt_risk == "malicious" or pt_risk == "malicious":
+        return "malicious"
+    if vt_risk == "suspicious" or pt_risk == "suspicious":
+        return "suspicious"
+    if vt_risk in ("error", "unknown") and pt_risk in ("error", "unknown"):
+        return "error"
+    if vt_risk == "safe" or pt_risk == "safe":
+        return "safe"
+    return "safe"
+
+
+async def scan_url_combined(url: str) -> Dict[str, Any]:
+    vt_res, pt_res = await asyncio.gather(
+        virustotal_service.scan_url(url),
+        check_phishtank(url),
+        return_exceptions=True,
+    )
+
+    if isinstance(vt_res, HTTPException):
+        vt_data = {"risk_level": "error", "error": vt_res.detail}
+        vt_risk = "error"
+    elif isinstance(vt_res, Exception):
+        vt_data = {"risk_level": "error", "error": str(vt_res)}
+        vt_risk = "error"
+    else:
+        vt_data = vt_res
+        vt_risk = vt_res.get("risk_level", "unknown")
+
+    if isinstance(pt_res, Exception):
+        pt_data = {"risk_level": "error", "error": str(pt_res)}
+        pt_risk = "error"
+    else:
+        pt_data = pt_res
+        pt_risk = pt_res.get("risk_level", "unknown")
+
+    combined_risk = calculate_consensus_risk(vt_risk, pt_risk)
+
+    return {
+        "url": url,
+        "risk_level": combined_risk,
+        "details": {
+            "virustotal": vt_data,
+            "phishtank": pt_data,
+        },
+    }
 
 
 @router.post(
     "/url",
     response_model=ScanResponse,
     status_code=status.HTTP_200_OK,
-    summary="Analizar URL sospechosa con VirusTotal",
+    summary="Analizar URL sospechosa con VirusTotal y PhishTank",
 )
 async def scan_url(
     scan_in: URLScanRequest,
@@ -30,23 +78,24 @@ async def scan_url(
 ) -> Any:
     url_str = str(scan_in.url)
 
-    vt_result = await virustotal_service.scan_url(url=url_str)
-    risk_level = vt_result.get("risk_level", "pending")
+    combined_scan = await scan_url_combined(url_str)
+    global_risk = combined_scan["risk_level"]
+    details = combined_scan["details"]
 
     create_scan_history(
         db=db,
         user_id=current_user.id,
         target=url_str,
         scan_type="url",
-        risk_level=risk_level,
-        raw_result=vt_result,
+        risk_level=global_risk,
+        raw_result=details,
     )
 
     return ScanResponse(
         target=url_str,
         scan_type="url",
-        risk_level=risk_level,
-        details=vt_result.get("stats") or vt_result,
+        risk_level=global_risk,
+        details=details,
     )
 
 
@@ -93,22 +142,7 @@ async def scan_email(
     urls_scan_results: List[Dict[str, Any]] = []
 
     if urls_to_scan:
-        async def _safe_scan(url: str) -> Dict[str, Any]:
-            try:
-                res = await virustotal_service.scan_url(url)
-                return {
-                    "url": url,
-                    "risk_level": res.get("risk_level", "unknown"),
-                    "stats": res.get("stats", {}),
-                }
-            except Exception as err:
-                return {
-                    "url": url,
-                    "risk_level": "error",
-                    "error": str(err),
-                }
-
-        tasks = [_safe_scan(url) for url in urls_to_scan]
+        tasks = [scan_url_combined(u) for u in urls_to_scan]
         urls_scan_results = await asyncio.gather(*tasks)
 
     malicious_count = sum(1 for r in urls_scan_results if r.get("risk_level") == "malicious")

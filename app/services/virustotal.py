@@ -17,26 +17,18 @@ class VirusTotalService:
         return base64.urlsafe_b64encode(url.encode()).decode().strip("=")
 
     def _evaluate_risk(self, stats: Dict[str, int]) -> str:
-        """
-        - 'malicious': Consenso claro (>= 3 motores maliciosos).
-        - 'suspicious': 1 o 2 motores maliciosos sin reputación alta, o múltiples sospechosos.
-        - 'safe': Sin detecciones, o falsos positivos aislados (1 motor) en dominios masivos (harmless >= 30).
-        """
         malicious = stats.get("malicious", 0)
         suspicious = stats.get("suspicious", 0)
         harmless = stats.get("harmless", 0)
 
-        # Consenso de amenaza confirmada
         if malicious >= 3:
             return "malicious"
 
-        # Detecciones aisladas (1 o 2 motores)
         if malicious in (1, 2):
             if harmless >= 30:
                 return "safe"
             return "suspicious"
 
-        # Motores sospechosos
         if suspicious >= 2:
             return "suspicious"
         if suspicious == 1:
@@ -54,7 +46,6 @@ class VirusTotalService:
         max_attempts: int = 6,
         interval_seconds: int = 3,
     ) -> Dict[str, Any]:
-
         for attempt in range(1, max_attempts + 1):
             await asyncio.sleep(interval_seconds)
 

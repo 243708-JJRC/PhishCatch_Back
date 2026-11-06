@@ -6,13 +6,18 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.db.base_class import Base
+from app.db.session import engine
+from app.models import ScanHistory, User
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    print(f"Iniciando {settings.PROJECT_NAME} [{settings.ENVIRONMENT}]...")
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
     yield
-    print(f"Deteniendo {settings.PROJECT_NAME}...")
 
 
 app = FastAPI(
