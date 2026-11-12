@@ -33,8 +33,8 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    VIRUSTOTAL_API_KEY: str = ""
-    PHISHTANK_API_KEY: str = ""
+    VIRUSTOTAL_API_KEY: str 
+    GOOGLE_SAFE_BROWSING_API_KEY: str 
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.scan import ScanResponse, URLScanRequest
 from app.services.email_parser import parse_eml
-from app.services.phishtank import check_phishtank
+from app.services.google_safebrowsing import check_safe_browsing
 from app.services.virustotal import virustotal_service
 
 router = APIRouter()
@@ -17,22 +17,22 @@ router = APIRouter()
 MAX_EML_SIZE_BYTES = 10 * 1024 * 1024
 
 
-def calculate_consensus_risk(vt_risk: str, pt_risk: str) -> str:
-    if vt_risk == "malicious" or pt_risk == "malicious":
+def calculate_consensus_risk(vt_risk: str, google_risk: str) -> str:
+    if vt_risk == "malicious" or google_risk == "malicious":
         return "malicious"
-    if vt_risk == "suspicious" or pt_risk == "suspicious":
+    if vt_risk == "suspicious" or google_risk == "suspicious":
         return "suspicious"
-    if vt_risk in ("error", "unknown") and pt_risk in ("error", "unknown"):
+    if vt_risk in ("error", "unknown") and google_risk in ("error", "unknown"):
         return "error"
-    if vt_risk == "safe" or pt_risk == "safe":
+    if vt_risk == "safe" or google_risk == "safe":
         return "safe"
     return "safe"
 
 
 async def scan_url_combined(url: str) -> Dict[str, Any]:
-    vt_res, pt_res = await asyncio.gather(
+    vt_res, google_res = await asyncio.gather(
         virustotal_service.scan_url(url),
-        check_phishtank(url),
+        check_safe_browsing(url),
         return_exceptions=True,
     )
 
@@ -46,21 +46,21 @@ async def scan_url_combined(url: str) -> Dict[str, Any]:
         vt_data = vt_res
         vt_risk = vt_res.get("risk_level", "unknown")
 
-    if isinstance(pt_res, Exception):
-        pt_data = {"risk_level": "error", "error": str(pt_res)}
-        pt_risk = "error"
+    if isinstance(google_res, Exception):
+        google_data = {"risk_level": "error", "error": str(google_res)}
+        google_risk = "error"
     else:
-        pt_data = pt_res
-        pt_risk = pt_res.get("risk_level", "unknown")
+        google_data = google_res
+        google_risk = google_res.get("risk_level", "unknown")
 
-    combined_risk = calculate_consensus_risk(vt_risk, pt_risk)
+    combined_risk = calculate_consensus_risk(vt_risk, google_risk)
 
     return {
         "url": url,
         "risk_level": combined_risk,
         "details": {
             "virustotal": vt_data,
-            "phishtank": pt_data,
+            "google": google_data,
         },
     }
 
@@ -69,7 +69,7 @@ async def scan_url_combined(url: str) -> Dict[str, Any]:
     "/url",
     response_model=ScanResponse,
     status_code=status.HTTP_200_OK,
-    summary="Analizar URL sospechosa con VirusTotal y PhishTank",
+    summary="Analizar URL sospechosa con VirusTotal y Google Safe Browsing",
 )
 async def scan_url(
     scan_in: URLScanRequest,
